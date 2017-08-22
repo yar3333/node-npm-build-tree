@@ -2,8 +2,8 @@
   "name": "npm-build-tree",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/index.js",
-  "bin": "./bin/npm-build-tree",
+  "main": "dist/NpmBuildTree.js",
+  "bin": "bin/npm-build-tree",
   "devDependencies": {
     "typescript": "^2.0.3"
   },

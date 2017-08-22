@@ -5,7 +5,7 @@ import * as path from "path";
 import { CmdOptions } from "./CmdOptions";
 import { Logger } from "./Logger";
 import * as FsTools from "./FsTools";
-import { execSync } from "child_process";
+import { execSync, ExecSyncOptions } from "child_process";
 
 interface PackageFile {
     name:string;
@@ -20,40 +20,33 @@ interface Tree {
     children: Tree[];
 }
 
-/*var options = new CmdOptions();
-options.add("target", "ES5", ["--target"], "ES3, ES5, ES6, ES2015 or Latest. Default is ES5.")
-options.add("logLevel", "warn", ["--log-level"], "Verbose level: 'none', 'warn' or 'debug'. Default is 'warn'.")
-options.addRepeatable("imports", ["--import"], "Add import for each generated file.")*/
+var options = new CmdOptions();
+//options.add("target", "ES5", ["--target"], "ES3, ES5, ES6, ES2015 or Latest. Default is ES5.")
+//options.add("logLevel", "warn", ["--log-level"], "Verbose level: 'none', 'warn' or 'debug'. Default is 'warn'.")
+//options.addRepeatable("imports", ["--import"], "Add import for each generated file.")
+
+options.add("script", "build", null, "npm script to execute for each module. Default is `build`.")
 
 if (process.argv.length == 2 && process.argv[1] == "--help" || process.argv[1] == "-h" || process.argv[1] == "/?")
 {
     console.log("The tool to walk a dependency tree (by reading `package.json` files)");
-    console.log("from deep to top and run `npm build` command for each changed module.");
+    console.log("from deep to top and run `npm run <script>` command for each module.");
     console.log("Process only modules which referenced by a 'file:' prefix in dependencies.");
-    console.log("Usage: npm-build-tree");
+    console.log("");
+    console.log("Usage: npm-build-tree [ <npm-script-to-execute> ]");
+    console.log("Where:");
+    console.log(options.getHelpMessage());
     process.exit(1);
 }
 
-//var params = options.parse(process.argv.slice(2));
+var params = options.parse(process.argv.slice(1));
 
-/*
-let filePaths : Array<string> = params.get("filePaths");
-for (var i = 0; i < filePaths.length; i++)
-{
-    if (fs.statSync(filePaths[i]).isDirectory())
-    {
-        var allFiles = [];
-        FsTools.walkSync(filePaths[i], (start, dirs, files) => allFiles = allFiles.concat(files.filter(x => x.endsWith(".d.ts")).map(x => start + "/" + x)));
-        var after = filePaths.slice(i + 1);
-        filePaths = filePaths.slice(0, i).concat(allFiles).concat(after);
-        i += allFiles.length - 1;
-    }
-}*/
-
-
+var script = params.get("script");
 
 var tree = makeTree(".");
-buildTree(tree);
+if (tree) buildTree(tree);
+
+//////////////////////////////////////////////////////////////////////////////////////////////
 
 function makeTree(baseDir) : Tree
 {
@@ -71,21 +64,27 @@ function makeTree(baseDir) : Tree
     };
 }
 
-function detectModuleSelfChanged(dir:string): boolean
+function buildTree(tree:Tree)
 {
-    return true;
-}
-
-function detectModuleSourcesLastModifiedMoment(dir:string) : Date
-{
+    for (var x of tree.children) buildTree(x);
     
+    systemSync("npm run " + script, { cwd:tree.dir, maxBuffer:16*1024*1024 });
 }
 
-function buildTree(tree:Tree) : Date
+function systemSync(cmd:string, options): string
 {
-    var date = tree.children.map(x => buildTree(x)).reduce((prev, cur) => , null)
+    console.log(options.cwd + "> " + cmd);
     
-    execSync
+    try
+    {
+        return execSync(cmd, options).toString();
+    }
+    catch (e)
+    {
+        console.log(e.message);
+        console.log(e.stdout);
+        console.log(e.stderr);
+        
+        process.exit(e.status);
+    }
 }
-
-console.log("Count: " + count);
